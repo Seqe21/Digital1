@@ -1,1 +1,102 @@
+graph TD
+    %% ================= Nodos =================
 
+    %% 1. Arranque y Errores
+    INICIO([Inicio / Encendido])
+    VERIFICAR["Verificar Módulos en el Bus\n(BRAM, I2C, SPI...)"]
+    MODULOS_OK{¿Módulos\nresponden?}
+    
+    ID_ERROR[Identificar módulo fallido]
+    PANTALLA_ERR[/"Mostrar Código de Error"/]
+    STOP([Sistema Detenido])
+
+    %% 2. Encendido Exitoso
+    SONIDO[Reproducir Sonido]
+    PANTALLA_ON[Encender pantallas]
+
+    %% 3. Selección Dinámica de Controlador
+    ESPERA_CTRL[/Pantalla Inicio:\nEsperar entrada de jugador/]
+    LEER_TODOS[Leer registros:\nNES, Teclado, Mouse]
+    DETECTA{¿Qué periférico\nenvió señal?}
+    
+    ASIGNA_NES[Asignar Jugador 1 a NES]
+    ASIGNA_TEC[Asignar Jugador 1 a Teclado]
+    ASIGNA_MOU[Asignar Jugador 1 a Mouse]
+
+    %% 4. Menú y Opciones
+    MENU[Menú Principal]
+    LEER_DIR[Leer Comandos del Menú]
+    SELECCION{¿Qué opción\nse eligió?}
+    TUTORIAL[/Mostrar Instrucciones/]
+    
+    %% 5. Lógica Multijugador
+    SOPORTA_MULTI{¿El juego soporta\nMultijugador?}
+    ELEGIR_MODO{¿Qué modo\neligió?}
+    SYNC_ESPERA["Esperar conexión de otra placa\n(UART/SPI)"]
+    
+    %% 6. Ramas de Juego
+    JUEGO_LOCAL[Ejecutar Bucle de Juego Local]
+    JUEGO_MULTI["Ejecutar Bucle Multijugador\n(Sincronizar estado entre placas)"]
+    
+    %% 7. Chequeo de Estado (Game Loop)
+    ERR_RUNTIME{¿Se desconectó\nalgún módulo\no la red?}
+    FIN_JUEGO{¿Game Over?}
+
+    %% ================= Conexiones =================
+
+    %% Arranque
+    INICIO --> VERIFICAR --> MODULOS_OK
+    MODULOS_OK -- No --> ID_ERROR --> PANTALLA_ERR --> STOP
+    MODULOS_OK -- Sí --> SONIDO --> PANTALLA_ON --> ESPERA_CTRL
+
+    %% Selección de Control
+    ESPERA_CTRL --> LEER_TODOS --> DETECTA
+    DETECTA -- Ninguno --> ESPERA_CTRL
+    DETECTA -- Control NES --> ASIGNA_NES --> MENU
+    DETECTA -- Teclado --> ASIGNA_TEC --> MENU
+    DETECTA -- Mouse --> ASIGNA_MOU --> MENU
+
+    %% Menú
+    MENU --> LEER_DIR --> SELECCION
+    SELECCION -- Opción Tutorial --> TUTORIAL --> MENU
+    
+    %% Entrando a jugar
+    SELECCION -- Jugar --> SOPORTA_MULTI
+    SOPORTA_MULTI -- No --> JUEGO_LOCAL
+    SOPORTA_MULTI -- Sí --> ELEGIR_MODO
+    
+    ELEGIR_MODO -- 1 Jugador --> JUEGO_LOCAL
+    ELEGIR_MODO -- Multijugador --> SYNC_ESPERA
+    
+    SYNC_ESPERA -- Conexión Exitosa --> JUEGO_MULTI
+    SYNC_ESPERA -- Timeout / Cancelar --> MENU
+
+    %% Ciclo de juego y fallos en tiempo real
+    JUEGO_LOCAL --> ERR_RUNTIME
+    JUEGO_MULTI --> ERR_RUNTIME
+    
+    ERR_RUNTIME -- Sí --> ID_ERROR
+    ERR_RUNTIME -- No --> FIN_JUEGO
+    
+    FIN_JUEGO -- No (Modo Local) --> JUEGO_LOCAL
+    FIN_JUEGO -- No (Modo Multi) --> JUEGO_MULTI
+    FIN_JUEGO -- Sí --> MENU
+
+    %% ================= Estilos =================
+    classDef startend fill:#d9ead3,stroke:#274e13,stroke-width:2px;
+    classDef process fill:#cfe2f3,stroke:#0b5394,stroke-width:2px;
+    classDef decision fill:#fff2cc,stroke:#b45f06,stroke-width:2px;
+    classDef io fill:#fce5cd,stroke:#b45f06,stroke-width:2px;
+    classDef error fill:#f4cccc,stroke:#990000,stroke-width:2px;
+    classDef multi fill:#e6b8af,stroke:#cc0000,stroke-width:2px;
+    classDef ctrl fill:#d9d2e9,stroke:#351c75,stroke-width:2px;
+
+    class INICIO,STOP startend;
+    class VERIFICAR,SONIDO,PANTALLA_ON,LEER_TODOS,ASIGNA_NES,ASIGNA_TEC,ASIGNA_MOU,MENU,LEER_DIR,JUEGO_LOCAL,JUEGO_MULTI,SYNC_ESPERA process;
+    class MODULOS_OK,DETECTA,SELECCION,SOPORTA_MULTI,ELEGIR_MODO,ERR_RUNTIME,FIN_JUEGO decision;
+    class TUTORIAL io;
+    class ID_ERROR,PANTALLA_ERR error;
+    
+    %% Colores destacados por zonas
+    class SOPORTA_MULTI,ELEGIR_MODO,SYNC_ESPERA,JUEGO_MULTI multi;
+    class ESPERA_CTRL,LEER_TODOS,DETECTA,ASIGNA_NES,ASIGNA_TEC,ASIGNA_MOU ctrl;
